@@ -3,6 +3,50 @@ import logging
 from tqdm import tqdm
 import pysam
 from collections import defaultdict
+import numpy as np
+
+
+def read_fasta(file_name):
+    i = 0
+    out = {}
+    record_name = None
+    f = open(file_name)
+    for line in f:
+        if i % 5000000 == 0:
+            logging.info("%d fasta sequence processed" % i)
+
+        i += 1
+        if line.startswith(">"):
+            record_name = line.strip().replace(">", "")
+        else:
+            sequence = line.strip()
+            out[record_name] = sequence
+
+    return out
+
+def read_fasta_to_numeric_sequences(file_name, sequence_graph):
+    i = 0
+    out = {}
+    record_name = None
+    f = open(file_name)
+    for line in f:
+        if i % 5000000 == 0:
+            logging.info("%d fasta sequence processed" % i)
+
+        i += 1
+        if line.startswith(">"):
+            record_name = line.strip().replace(">", "")
+        else:
+            sequence = line.strip()
+            numeric_sequence = sequence_graph._letter_sequence_to_numeric(np.array(list(sequence.lower())))
+            if np.all(numeric_sequence == 0):
+                logging.debug(sequence)
+                logging.debug(numeric_sequence)
+                raise Exception("Could not convert")
+            out[record_name] = (sequence, numeric_sequence)
+
+    return out
+
 
 def split_sam_by_chromosomes(sam_file, chromosomes):
     chromosome_index = set(chromosomes)
@@ -17,6 +61,8 @@ def split_sam_by_chromosomes(sam_file, chromosomes):
     with open(sam_file) as f:
         for i, line in enumerate(tqdm(f, total=n_lines)):
             if line.startswith("@"):
+                for chrom in chromosomes:
+                    outfiles[chrom].writelines([line])
                 continue
 
             chrom = line.split()[2]
@@ -35,6 +81,7 @@ def split_sam_by_chromosomes(sam_file, chromosomes):
 class Alignment:
     def __init__(self, name, chromosome, start, end, sequence, is_reverse, flag=0, mapq=0, score=0,
                     alternative_alignments=None, pysam_object=None):
+        self.sequence = sequence
         self.name = name
         self.start = start
         self.end = end
@@ -51,9 +98,9 @@ class Alignment:
         self.pysam_object.mapping_quality = new_mapq
 
 
-def read_sam(sam_file_name, chr=None, start=None, stop=None, skip_supplementary=True):
+def read_sam(sam_file_name, chr=None, start=None, stop=None, skip_supplementary=True, check_sq=True):
     """ Wrapper around pysam"""
-    f = pysam.AlignmentFile(sam_file_name, "r")
+    f = pysam.AlignmentFile(sam_file_name, "r", check_sq=check_sq)
     for a in f.fetch(chr, start, stop, until_eof=True):
         if skip_supplementary and a.is_supplementary:
             continue
