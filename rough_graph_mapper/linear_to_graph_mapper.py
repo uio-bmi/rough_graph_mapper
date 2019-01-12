@@ -1,5 +1,5 @@
 import os
-from .util import split_sam_by_chromosomes, run_bwa_mem
+from .util import split_sam_by_chromosomes, run_bwa_mem, run_hybrid_between_bwa_and_minimap
 from offsetbasedgraph import Graph, SequenceGraph, NumpyIndexedInterval
 from multiprocessing import Process
 import logging
@@ -20,13 +20,14 @@ class LinearToGraphMapper:
 
             self.base_name = '.'.join(fasta_file_name.split(".")[:-1])
             # First align to linear reference
-            run_bwa_mem(linear_reference_file_name, fasta_file_name, self.base_name + ".sam", arguments="-t 10")
-
+            run_hybrid_between_bwa_and_minimap(linear_reference_file_name, fasta_file_name, self.base_name + ".sam",
+                                               bwa_arguments="-t 10",
+                                               minimap_arguments="-t 40 -k19 -w11 --sr --frag=yes -A2 -B8 -O12,32 -E2,1 -r50 -p.5 -N20 -f90000,180000 -n2 -m20 -s40 -g200 -2K50m --heap-sort=yes -N 7 -a")
+            #run_bwa_mem(linear_reference_file_name, fasta_file_name, self.base_name + ".sam", arguments="-t 10")
             assert os.path.isfile(self.base_name + ".sam"), "No sam file generated. Did BWA MEM fail?"
 
             # Split sam by chromosome
             split_sam_by_chromosomes(self.base_name + ".sam", chromosomes)
-
             self.map_all_chromosomes()
 
         def map_all_chromosomes(self):
