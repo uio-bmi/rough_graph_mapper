@@ -5,10 +5,11 @@ from .linear_to_graph_mapper import LinearToGraphMapper
 from .traverse_mapper import TraverseMapper
 from .filter_graphalignments import filter_graphalignments
 
+
 def run_filter(args):
     alignments = args.alignments
     min_mapq = args.min_mapq
-    filter(alignments, min_mapq)
+    filter_graphalignments(alignments, min_mapq)
 
 def run_map_linear_to_graph(args):
     chromosomes = args.chromosomes.split(",")
@@ -41,8 +42,8 @@ def run_argument_parser(args):
 
     subparser_graph.add_argument("-s", "--skip_run_linear", default=False, type=bool, required=False)
 
-    subparser_filter.add_argument("-m", "--min-mapq", help="Minimum mapq to keep")
-    subparser_filter.add_argument("-a", "--alignments", help="Graphalignments file to filter")
+    subparser_filter.add_argument("-m", "--min-mapq", help="Minimum mapq to keep", required=False, type=int, default=50)
+    subparser_filter.add_argument("-a", "--alignments", help="Graphalignments file to filter", required=True)
 
     subparser_linear.set_defaults(func=run_map_linear_to_graph)
     subparser_graph.set_defaults(func=run_graphtraverser)
