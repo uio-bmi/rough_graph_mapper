@@ -5,7 +5,8 @@
 Rough Graph Mapper is a simple proof-of-concept graph-mapper implemented in Python. 
 
 ## Install
-The only requirement is BWA. Makes sure that you have BWA installed.
+You will need BWA and Minimap2 installed first. The rest of the dependencies are 
+handled when you run the python install script.
 
 You install by cloning and running `python setup.py`
 

@@ -25,8 +25,8 @@ class SamToGraphAligner:
         with open(self.sam_file_name + ".multimapping.txt", "w") as f:
             f.writelines((name + "\n" for name in self.reads_skipped_because_low_mapq_and_multimapping))
 
-        logging.info("%d reads have low mapq and are multimapping. Wrote these to file %s." % (
-                     len(self.reads_skipped_because_low_mapq_and_multimapping), self.sam_file_name + ".multimapping.txt"))
+        #logging.info("%d reads have low mapq and are multimapping. Wrote these to file %s." % (
+        #             len(self.reads_skipped_because_low_mapq_and_multimapping), self.sam_file_name + ".multimapping.txt"))
 
     def _read_graph_data(self):
         chromosome = self.chromosome
@@ -73,7 +73,7 @@ class SamToGraphAligner:
         else:
             progress_position = int(self.chromosome)
 
-        logging.info("Aligning %s" % self.sam_file_name)
+        #logging.info("Aligning %s" % self.sam_file_name)
         for record in tqdm(read_sam(self.sam_file_name), desc="Chromosome " + str(self.chromosome),
                             total=number_of_lines_in_file(self.sam_file_name), position=progress_position):
             self._align_sam_record(record)

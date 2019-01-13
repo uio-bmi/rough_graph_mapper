@@ -93,6 +93,14 @@ class Alignment:
         self.alternative_alignments = alternative_alignments
         self.pysam_object = pysam_object
 
+    def set_start(self, new_start):
+        self.start = new_start
+        self.pysam_object.reference_start = new_start
+
+    def set_end(self, new_end):
+        self.end = new_end
+        self.pysam_object.reference_end = new_end
+
     def set_mapq(self, new_mapq):
         self.mapq = new_mapq
         self.pysam_object.mapping_quality = new_mapq

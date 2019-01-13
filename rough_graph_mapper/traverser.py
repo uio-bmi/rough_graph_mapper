@@ -5,6 +5,7 @@ import logging
 from collections import defaultdict
 from tqdm import tqdm
 
+
 def traverse(chrom, graph, aligner, linear_path_nodes, sequence_graph, reads, seed_length=100, linear_ref_bonus=2, n_mismatches_allowed=4, edge_counts=None):
     first_nodes = graph.get_first_blocks()
     assert len(first_nodes) == 1
@@ -32,7 +33,7 @@ def traverse(chrom, graph, aligner, linear_path_nodes, sequence_graph, reads, se
     else:
         progress_position = int(chrom)
 
-    for i in tqdm(range(len(graph.blocks)), total=len(linear_path_nodes), position=progress_position, desc="Chromosome " + chrom):
+    for i in tqdm(range(int(len(graph.blocks) * 1.1)), total=len(linear_path_nodes), position=progress_position, desc="Chromosome " + chrom):
         path.append(node)
         """
         if i % 50000 == 0:

@@ -42,7 +42,8 @@ def map_single_chromosome(base_name, graph_dir, chromosome, linear_ref_bonus=1, 
 
 class TraverseMapper:
     def __init__(self, fasta_file_name, linear_reference_file_name, graph_dir, chromosomes,
-                 minimum_mapq_to_graphalign=60, skip_run_linear_to_graph=False, write_final_alignments_to_file=None):
+                 minimum_mapq_to_graphalign=60, skip_run_linear_to_graph=False, write_final_alignments_to_file=None,
+                 n_threads=8):
         self.fasta_file_name = fasta_file_name
         self.base_name = '.'.join(self.fasta_file_name.split(".")[:-1])
         self.chromosomes = chromosomes
@@ -53,7 +54,8 @@ class TraverseMapper:
         if not skip_run_linear_to_graph:
             LinearToGraphMapper(fasta_file_name, linear_reference_file_name, graph_dir, chromosomes,
                                 minimum_mapq_to_graphalign=minimum_mapq_to_graphalign,
-                                write_final_alignments_to_file=self.base_name + "_from_linear.graphalignments")
+                                write_final_alignments_to_file=self.base_name + "_from_linear.graphalignments",
+                                n_threads=n_threads)
         else:
             logging.info("Not running linear to graph mapping first. Assuming this has already been done.")
 
@@ -65,10 +67,13 @@ class TraverseMapper:
 
     def _create_fasta_without_those_aligned_well_linear(self):
         ignore_reads = set()
-        for chromosome in self.chromosomes:
-            for record in read_sam(self.base_name + "_chr" + str(chromosome) + ".sam"):
-                ignore_reads.add(record.name)
+        # Ignore all that we aligned from linear
+        with open(self.base_name + "_from_linear.graphalignments") as f:
+            for line in f:
+                ignore_reads.add(line.strip().split("\t")[0])
 
+        # Ignore all multimapping reads (we discovered these when aligning from linear)
+        for chromosome in self.chromosomes:
             with open(self.base_name + "_chr" + str(chromosome) + ".sam.multimapping.txt") as f:
                 for line in f:
                     ignore_reads.add(line.strip())
