@@ -1,4 +1,5 @@
 import logging
+import shutil
 import argparse
 import sys
 from .linear_to_graph_mapper import LinearToGraphMapper
@@ -24,15 +25,25 @@ def main():
 
 
 def run_argument_parser(args):
+
+    if shutil.which("bwa") is None:
+        logging.error("BWA MEM cannot be found in path. Make sure BWA is installed.")
+        sys.exit()
+    if shutil.which("minimap2") is None:
+        logging.error("minimap2 cannot be found in path. Make sure minimap2 is installed")
+        sys.exit()
+
     parser = argparse.ArgumentParser(
         description='Rough Graph Mapper',
         prog='rough_graph_mapper',
         formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=50, width=100))
 
     subparsers = parser.add_subparsers(help='Subcommands')
-    subparser_linear = subparsers.add_parser("map_linear_to_graph", help="...")
-    subparser_graph = subparsers.add_parser("traversemapper", help="...")
-    subparser_filter = subparsers.add_parser("filter", help="....")
+    subparser_linear = subparsers.add_parser("map_linear_to_graph", help="Graphmapping by first mapping to a "
+                                    "linear reference genome and then fitting these alignments to the graph.")
+    subparser_graph = subparsers.add_parser("traversemapper",
+                                    help="Graphmapping by traversing the graph and fitting the graph to the reads.")
+    subparser_filter = subparsers.add_parser("filter", help="Filtering alignments.")
 
     for subparser in [subparser_linear, subparser_graph]:
         subparser.add_argument("-r", "--reference", help="Linear reference fasta", required=True)

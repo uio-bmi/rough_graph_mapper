@@ -42,7 +42,7 @@ class SamToGraphAligner:
             return
 
         sequence = record.sequence
-        linear_pos = int(record.start) - 1
+        linear_pos = int(record.start) - 0  # Appearently 0-indexed when read by pysam
         position = self.linear_path.position_at_offset(linear_pos)
 
         if record.alternative_alignments is not None:
@@ -77,5 +77,7 @@ class SamToGraphAligner:
         for record in tqdm(read_sam(self.sam_file_name), desc="Chromosome " + str(self.chromosome),
                             total=number_of_lines_in_file(self.sam_file_name), position=progress_position):
             self._align_sam_record(record)
+
+        logging.info("%d reads not aligned" % self.n_did_not_align)
 
 

@@ -51,7 +51,7 @@ class LinearToGraphMapper:
                 out_file = open(out_file_name, "w")
 
             for chromosome in self.chromosomes:
-                with open(self.base_name + "_chr" + chromosome + ".sam", "r") as f:
+                with open(self.base_name + "_chr" + chromosome + ".sam.graphalignments", "r") as f:
                     for line in f:
                         if self.write_final_alignments_to_file is not None:
                             out_file.writelines([line])

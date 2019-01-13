@@ -51,7 +51,6 @@ def traverse(chrom, graph, aligner, linear_path_nodes, sequence_graph, reads, se
         node_sequence = sequence_graph.get_numeric_node_sequence(node)
         traversed_sequence[n_traversed:n_traversed + len(node_sequence)] = node_sequence
         n_traversed += len(node_sequence)
-        assert len(node_sequence) <= 32, "Assuming nodes are short"
 
         next_nodes = graph.adj_list[node]
 

@@ -40,18 +40,19 @@ def map_single_chromosome(base_name, graph_dir, chromosome, linear_ref_bonus=1, 
                         linear_ref_bonus=linear_ref_bonus, edge_counts=edge_counts)
 
 
-
 class TraverseMapper:
     def __init__(self, fasta_file_name, linear_reference_file_name, graph_dir, chromosomes,
-                    skip_run_linear_to_graph=False):
+                 minimum_mapq_to_graphalign=60, skip_run_linear_to_graph=False, write_final_alignments_to_file=None):
         self.fasta_file_name = fasta_file_name
         self.base_name = '.'.join(self.fasta_file_name.split(".")[:-1])
         self.chromosomes = chromosomes
         self.graph_dir = graph_dir
+        self.write_final_alignments_to_file = write_final_alignments_to_file
 
         # First run linear to graph mapper
         if not skip_run_linear_to_graph:
             LinearToGraphMapper(fasta_file_name, linear_reference_file_name, graph_dir, chromosomes,
+                                minimum_mapq_to_graphalign=minimum_mapq_to_graphalign,
                                 write_final_alignments_to_file=self.base_name + "_from_linear.graphalignments")
         else:
             logging.info("Not running linear to graph mapping first. Assuming this has already been done.")
@@ -104,14 +105,27 @@ class TraverseMapper:
         for p in processes:
             p.join()
 
+        out_file = None
+        if self.write_final_alignments_to_file is not None:
+            out_file = open(self.write_final_alignments_to_file, "w")
+
         logging.info("Done with all chromosomes. Merging alignments with those from linear")
         for chromosome in self.chromosomes:
             with open(chromosome + ".graphalignments") as f:
                 for line in f:
-                    print(line.strip())
+                    if self.write_final_alignments_to_file is None:
+                        print(line.strip())
+                    else:
+                        out_file.writelines([line])
 
             with open(self.base_name + "_chr" + chromosome + ".sam.graphalignments") as f:
                 for line in f:
-                    print(line.strip())
+                    if self.write_final_alignments_to_file is None:
+                        print(line.strip())
+                    else:
+                        out_file.writelines([line])
 
+        if self.write_final_alignments_to_file is not None:
+            logging.info("Wrote all final graphalignments to %s" % self.write_final_alignments_to_file)
+            out_file.close()
         logging.info("Done mapping reads")
