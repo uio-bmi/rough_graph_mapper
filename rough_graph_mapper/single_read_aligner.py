@@ -24,12 +24,20 @@ class SingleSequenceAligner:
         self.n_mismatches_so_far = n_mismatches_init
 
     @staticmethod
-    def count_mismatches_between_sequences(seq1, seq2):
+    def count_mismatches_between_sequences(seq1, seq2, max_bp=None):
         return np.count_nonzero(seq1 != seq2)
+
+    @staticmethod
+    def count_match_score_between_sequences(seq1, seq2, max_bp=None):
+        return np.count_nonzero(seq1 != seq2) - np.count_nonzero(seq1 == seq2)
 
     def get_alignment(self):
         if self._last_node is None:
             return False
+
+        if self.n_mismatches_so_far >= self.n_mismatches_allowed:
+            return False
+
         return Interval(self.start_interval_offset, self.graph.blocks[self._last_node].length(), self.nodes)
 
     def _node_matches(self, node):
@@ -47,9 +55,10 @@ class SingleSequenceAligner:
         if self.print_debug:
             logging.debug("     Subsequence:                       %s" % subsequence)
         n_mismatches = SingleSequenceAligner.count_mismatches_between_sequences(rest_of_node_sequence, subsequence)
+        match_score = SingleSequenceAligner.count_match_score_between_sequences(rest_of_node_sequence, subsequence)
         if self.print_debug:
             logging.debug("     N mismatches: %d" % n_mismatches)
-        return n_mismatches
+        return n_mismatches, match_score
 
         # if rest_of_node_sequence[0:len(subsequence)] != subsequence:
         #    return False
@@ -60,7 +69,7 @@ class SingleSequenceAligner:
         current_node = self.node
 
         start_interval_offset = self.offset
-        n_mismatches = self._node_matches(current_node)
+        n_mismatches, match_score = self._node_matches(current_node)
         if n_mismatches > self.n_mismatches_allowed:
             if self.print_debug:
                 logging.debug("First node mismatch")
@@ -89,25 +98,30 @@ class SingleSequenceAligner:
             if self.print_debug:
                 logging.debug("Current node: %d" % current_node)
             fewest_mismatches = 1000
+            best_match_score = 10000000
             best_next_node = None
+            if self.print_debug:
+                logging.info("Possible next nodes: %s" % adj_list[current_node])
             for potential_next in adj_list[current_node]:
                 if self.print_debug:
                     logging.debug("Potential next node: %d" % potential_next)
-                n_mismatches = self._node_matches(potential_next)
-                if n_mismatches == 0:
+                n_mismatches, match_score = self._node_matches(potential_next)
+                if n_mismatches == 0 and False:  # This test is bad
                     # Choose this and don't care about rest
                     fewest_mismatches = 0
                     best_next_node = potential_next
                     if self.print_debug:
-                        logging.debug("Chose next node as %d" % best_next_node)
+                        logging.debug("Chose next node as %d, ignored others since perfect match" % best_next_node)
                     break
 
                 if self.print_debug:
                     logging.debug("    N mismatches: %d, fewest: %d, so far: %d, allowed: %d" % (
                     n_mismatches, fewest_mismatches, self.n_mismatches_so_far, self.n_mismatches_allowed))
-                if n_mismatches < fewest_mismatches \
+                # Low match score is better
+                if match_score < best_match_score \
                         and n_mismatches + self.n_mismatches_so_far <= self.n_mismatches_allowed:
                     fewest_mismatches = n_mismatches
+                    best_match_score = match_score
                     best_next_node = potential_next
                     if self.print_debug:
                         logging.debug(

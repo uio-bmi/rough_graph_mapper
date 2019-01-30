@@ -22,7 +22,7 @@ def filter_graphalignments(file_name, min_mapq=50):
 
     for read_name, hits in alignments.items():
         sorted_hits = sorted(hits, key=lambda x: x[1])
-        if sorted_hits[0][1] >= 5:
+        if sorted_hits[0][1] >= 7:
             # Skip because too bad score
             n_filtered_bad_score += 1
             continue
@@ -34,7 +34,7 @@ def filter_graphalignments(file_name, min_mapq=50):
         else:
             # Only keep if second best has much more mismatches
             n_mismatches = sorted_hits[0][1]
-            if sorted_hits[1][1] <= n_mismatches + 3:
+            if sorted_hits[1][1] <= n_mismatches + 0:
                 # skip
                 n_skipped_multiple_good_unique += 1
                 n_skipped_multiple_good += len(sorted_hits)
@@ -46,13 +46,13 @@ def filter_graphalignments(file_name, min_mapq=50):
 
             score = 5
             if len(hits) == 2:
-                score = 40
+                score = 58
             elif len(hits) == 3:
-                score = 30
+                score = 56
             elif len(hits) >= 4:
-                score = 5
+                score = 54
 
-            score -= best_hit[1] * 2 + (sorted_hits[1][1] - sorted_hits[0][1])
+            score -= best_hit[1] * 1 + (sorted_hits[1][1] - sorted_hits[0][1])
 
         if score >= min_mapq:
             print("%s\t%s\t%s" % (read_name, best_hit[0], score))

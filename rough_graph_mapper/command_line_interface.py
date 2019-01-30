@@ -14,12 +14,14 @@ def run_filter(args):
 
 def run_map_linear_to_graph(args):
     chromosomes = args.chromosomes.split(",")
-    LinearToGraphMapper(args.fasta, args.reference, args.data_dir, chromosomes, n_threads=args.n_threads)
+    LinearToGraphMapper(args.fasta, args.reference, args.data_dir, chromosomes, n_threads=args.n_threads,
+                        write_final_alignments_to_file=args.output_file, skip_mapq_adjustment=args.skip_mapq_adjustment)
 
 def run_graphtraverser(args):
     chromosomes = args.chromosomes.split(",")
     TraverseMapper(args.fasta, args.reference, args.data_dir, chromosomes, skip_run_linear_to_graph=args.skip_run_linear,
-                   n_threads=args.n_threads, write_final_alignments_to_file=args.output_file)
+                   n_threads=args.n_threads, write_final_alignments_to_file=args.output_file,
+                   skip_mapq_adjustment=args.skip_mapq_adjustment)
 
 def main():
     run_argument_parser(sys.argv[1:])
@@ -53,6 +55,8 @@ def run_argument_parser(args):
         subparser.add_argument("-c", "--chromosomes", help="Comma-separated list of chromosomes", required=True)
         subparser.add_argument("-t", "--n_threads", help="Number of threads to use", type=int, default=8, required=False)
         subparser.add_argument("-o", "--output-file", help="Write final alignments to this file. If not set, will write to stdout", default=None, required=False)
+        subparser.add_argument("-q", "--skip-mapq-adjustment", default=False, required=False,
+                help="Set to true to skip running mininap 2 adjust mapq's. Takes less time with worse performance.")
 
     subparser_graph.add_argument("-s", "--skip_run_linear", default=False, type=bool, required=False)
 
