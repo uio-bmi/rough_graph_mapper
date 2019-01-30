@@ -8,22 +8,26 @@ from .single_read_aligner import SingleSequenceAligner
 
 
 class SamToGraphAligner:
-    def __init__(self, graph_dir, chromosome, sam_file_name, minimum_mapq_to_graphalign=60):
+    def __init__(self, graph_dir, chromosome, sam_file_name, minimum_mapq_to_graphalign=60,
+                 minimum_score_to_graphalign=0):
         self.graph_dir = graph_dir
         self.chromosome = chromosome
         self.sam_file_name = sam_file_name
 
         self.n_skipped_supplementary = 0
         self.n_skipped_low_mapq = 0
+        self.n_skipped_low_score = 0
         self.n_aligned = 0
         self.n_did_not_align = 0
         self.minimum_mapq_to_graphalign=minimum_mapq_to_graphalign
+        self.minimum_score_to_graphalign=minimum_score_to_graphalign
         self.reads_skipped_because_low_mapq_and_multimapping = set()
         self.out_file = open(self.sam_file_name + ".graphalignments", "w")
         self._read_graph_data()
 
-        with open(self.sam_file_name + ".multimapping.txt", "w") as f:
-            f.writelines((name + "\n" for name in self.reads_skipped_because_low_mapq_and_multimapping))
+
+        #with open(self.sam_file_name + ".multimapping.txt", "w") as f:
+        #    f.writelines((name + "\n" for name in self.reads_skipped_because_low_mapq_and_multimapping))
 
         #logging.info("%d reads have low mapq and are multimapping. Wrote these to file %s." % (
         #             len(self.reads_skipped_because_low_mapq_and_multimapping), self.sam_file_name + ".multimapping.txt"))
@@ -39,6 +43,10 @@ class SamToGraphAligner:
     def _align_sam_record(self, record):
         if record.mapq < self.minimum_mapq_to_graphalign:
             self.n_skipped_low_mapq += 1
+            return
+
+        if record.score < self.minimum_score_to_graphalign:
+            self.n_skipped_low_score += 1
             return
 
         sequence = record.sequence
@@ -58,7 +66,7 @@ class SamToGraphAligner:
         sequence = self.sequence_graph._letter_sequence_to_numeric(np.array(list(sequence.lower())))
         # logging.info("Seq: %s" % sequence)
         aligner = SingleSequenceAligner(self.graph, self.sequence_graph, position.region_path_id,
-                                        int(position.offset), sequence, n_mismatches_allowed=10, print_debug=False)
+                                        int(position.offset), sequence, n_mismatches_allowed=7, print_debug=False)
         aligner.align()
         a = aligner.get_alignment()
         if a:
@@ -79,5 +87,8 @@ class SamToGraphAligner:
             self._align_sam_record(record)
 
         logging.info("%d reads not aligned" % self.n_did_not_align)
+        logging.info("%d skipped because low mapq" % self.n_skipped_low_mapq)
+        logging.info("%d skipped because low score" % self.n_skipped_low_score)
+
 
 

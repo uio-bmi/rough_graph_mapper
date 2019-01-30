@@ -14,18 +14,25 @@ def map_single_chromosome(file_base_name, graph_dir, chromosome, minimum_mapq_to
 
 
 class LinearToGraphMapper:
-        def __init__(self, fasta_file_name, linear_reference_file_name, graph_dir, chromosomes, minimum_mapq_to_graphalign=60, write_final_alignments_to_file=None, n_threads=3):
+        def __init__(self, fasta_file_name, linear_reference_file_name, graph_dir, chromosomes, minimum_mapq_to_graphalign=60, write_final_alignments_to_file=None, n_threads=3,
+                     skip_mapq_adjustment=False):
             self.chromosomes = chromosomes
             self.graph_dir = graph_dir
             self.minimum_mapq_to_graphalign = minimum_mapq_to_graphalign
             self.write_final_alignments_to_file=write_final_alignments_to_file
+            self.skip_mapq_adjustmnet = skip_mapq_adjustment
 
             self.base_name = '.'.join(fasta_file_name.split(".")[:-1])
             # First align to linear reference
-            run_hybrid_between_bwa_and_minimap(linear_reference_file_name, fasta_file_name, self.base_name + ".sam",
+            if not skip_mapq_adjustment:
+                run_hybrid_between_bwa_and_minimap(linear_reference_file_name, fasta_file_name, self.base_name + ".sam",
                                                bwa_arguments="-t %d -h 10000000 -D 0.05" % n_threads,
                                                minimap_arguments="-t %d -k19 -w11 --sr --frag=yes -A2 -B8 -O12,32 -E2,1 -r50 -p.5 -f90000,180000 -n2 -m20 -s40 -g200 -2K50m --heap-sort=yes -N 7 -a" % n_threads)
-            #run_bwa_mem(linear_reference_file_name, fasta_file_name, self.base_name + ".sam", arguments="-t 10")
+            else:
+                # Only run bwa mem
+                logging.warning("Skipping mapq adjustment. Will only run BWA, not minimap2")
+                run_bwa_mem(linear_reference_file_name, fasta_file_name, self.base_name + ".sam", arguments="-t %d -h 1000000 -D 0.05" % n_threads)
+
             assert os.path.isfile(self.base_name + ".sam"), "No sam file generated. Did BWA MEM or minimap fail?"
 
             # Split sam by chromosome

@@ -117,8 +117,13 @@ def read_sam(sam_file_name, chr=None, start=None, stop=None, skip_supplementary=
         if a.has_tag("XA"):
             alternative_alignments = a.get_tag("XA")
 
+        if a.has_tag("AS"):
+            score = a.get_tag("AS")
+        else:
+            score = 0
+
         alignment_object = Alignment(a.query_name, a.reference_name, a.reference_start, a.reference_end, a.query_sequence,
-                                     a.is_reverse, a.flag, a.mapping_quality, 0, alternative_alignments, a)
+                                     a.is_reverse, a.flag, a.mapping_quality, score, alternative_alignments, a)
 
         yield alignment_object
 
@@ -129,14 +134,14 @@ def number_of_lines_in_file(file_name):
 
 def select_lowest_mapq_from_two_sam_files(sam1_file_name, sam2_file_name, output_file_name):
     sam2_n_good_alignments = defaultdict(int)
-    mapq_sam2 = {}
+    mapq_sam2 = defaultdict(int)
 
     out_sam = pysam.AlignmentFile(output_file_name, "w", template=pysam.AlignmentFile(sam1_file_name, "r"))
 
     logging.info("Correcting mapq scores. First reading sam2")
     for alignment in tqdm(read_sam(sam2_file_name), total=number_of_lines_in_file(sam2_file_name)):
         sam2_n_good_alignments[alignment.name] += 1
-        mapq_sam2[alignment.name] = alignment.mapq
+        mapq_sam2[alignment.name] = max(alignment.mapq, mapq_sam2[alignment.name])  # Keep best mapq
 
     n_adjusted = 0
 
