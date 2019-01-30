@@ -54,7 +54,9 @@ def split_sam_by_chromosomes(sam_file, chromosomes):
     n_not_matched = 0
     outfiles = {}
     for chrom in chromosomes:
-        outfiles[chrom] = open(base_name + "_chr" + chrom + ".sam", "w")
+        name = base_name + "_chr" + chrom + ".sam"
+        outfiles[chrom] = open(name, "w")
+        logging.info("Will write to %s" % name)
 
     n_lines = number_of_lines_in_file(sam_file)
 
@@ -141,7 +143,7 @@ def select_lowest_mapq_from_two_sam_files(sam1_file_name, sam2_file_name, output
     sam2_n_good_alignments = defaultdict(int)
     mapq_sam2 = defaultdict(int)
 
-    out_sam = pysam.AlignmentFile(output_file_name, "w", template=pysam.AlignmentFile(sam1_file_name, "r"))
+    out_sam = pysam.AlignmentFile(output_file_name, "wh", template=pysam.AlignmentFile(sam1_file_name, "r"))
 
     logging.info("Correcting mapq scores. First reading sam2")
     for alignment in tqdm(read_sam(sam2_file_name), total=number_of_lines_in_file(sam2_file_name)):

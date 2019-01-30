@@ -82,7 +82,7 @@ class SamToGraphAligner:
             progress_position = int(self.chromosome)
 
         #logging.info("Aligning %s" % self.sam_file_name)
-        for record in tqdm(read_sam(self.sam_file_name, check_sq=False), desc="Chromosome " + str(self.chromosome),
+        for record in tqdm(read_sam(self.sam_file_name), desc="Chromosome " + str(self.chromosome),
                             total=number_of_lines_in_file(self.sam_file_name), position=progress_position):
             self._align_sam_record(record)
 
