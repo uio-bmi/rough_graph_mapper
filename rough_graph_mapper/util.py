@@ -8,8 +8,6 @@ import numpy as np
 
 def read_fasta(file_name):
     i = 0
-    out = {}
-    record_name = None
     f = open(file_name)
     for line in f:
         if i % 5000000 == 0:
@@ -20,9 +18,8 @@ def read_fasta(file_name):
             record_name = line.strip().replace(">", "")
         else:
             sequence = line.strip()
-            out[record_name] = sequence
+            yield record_name, sequence
 
-    return out
 
 def read_fasta_to_numeric_sequences(file_name, sequence_graph):
     i = 0

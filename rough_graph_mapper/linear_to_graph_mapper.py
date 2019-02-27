@@ -1,6 +1,5 @@
 import os
 from .util import split_sam_by_chromosomes, run_bwa_mem, run_hybrid_between_bwa_and_minimap
-from offsetbasedgraph import Graph, SequenceGraph, NumpyIndexedInterval
 from multiprocessing import Process
 import logging
 from .sam_to_graph_aligner import SamToGraphAligner

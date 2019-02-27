@@ -35,13 +35,13 @@ class SingleSequenceAligner:
         if self._last_node is None:
             return False
 
-        if self.n_mismatches_so_far >= self.n_mismatches_allowed:
+        if self.n_mismatches_so_far > self.n_mismatches_allowed:
             return False
 
         return Interval(self.start_interval_offset, self.graph.blocks[self._last_node].length(), self.nodes)
 
     def _node_matches(self, node):
-        assert node > 0, "Only positive nodes supported in numeric"
+        #assert node > 0, "Only positive nodes supported in numeric"
         if self.print_debug:
             logging.debug(" Checking if node match against node %d" % node)
         node_size = self.graph.blocks[node].length()
