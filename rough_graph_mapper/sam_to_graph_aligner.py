@@ -2,9 +2,9 @@ import numpy as np
 from tqdm import tqdm
 from .util import number_of_lines_in_file, read_sam
 import logging
-from offsetbasedgraph import Graph, SequenceGraph, NumpyIndexedInterval
+from offsetbasedgraph import Graph, SequenceGraphv2, NumpyIndexedInterval, Interval
 import mappy as mp
-from .single_read_aligner import SingleSequenceAligner
+from pygssw import OffsetBasedGraphAligner
 
 
 class SamToGraphAligner:
@@ -36,7 +36,7 @@ class SamToGraphAligner:
         chromosome = self.chromosome
         graph = Graph.from_file(self.graph_dir + chromosome + ".nobg")
         self.graph = graph
-        self.sequence_graph = SequenceGraph.from_file(self.graph_dir + chromosome + ".nobg.sequences")
+        self.sequence_graph = SequenceGraphv2.from_file(self.graph_dir + chromosome + ".nobg.sequencesv2")
         linear_path = NumpyIndexedInterval.from_file(self.graph_dir + chromosome + "_linear_pathv2.interval")
         self.linear_path = linear_path
 
@@ -63,16 +63,20 @@ class SamToGraphAligner:
             sequence = mp.revcomp(sequence)
             #logging.warning("Found reverse alignment. Not implemented now, ignoring")
 
-        sequence = self.sequence_graph._letter_sequence_to_numeric(np.array(list(sequence.lower())))
         # logging.info("Seq: %s" % sequence)
-        aligner = SingleSequenceAligner(self.graph, self.sequence_graph, position.region_path_id,
-                                        int(position.offset), sequence, n_mismatches_allowed=7, print_debug=False)
-        aligner.align()
-        a = aligner.get_alignment()
-        if a:
+        #aligner = SingleSequenceAligner(self.graph, self.sequence_graph, position.region_path_id,
+        #                                int(position.offset), sequence, n_mismatches_allowed=7, print_debug=False)
+        #aligner.align()
+        aligner = OffsetBasedGraphAligner(self.graph, self.sequence_graph, position.region_path_id, sequence,
+                                          n_bp_to_traverse_right=200, n_bp_to_traverse_left=0)
+
+        aligned_nodes, score = aligner.align()
+        if len(aligned_nodes) > 0:
+            aligned_interval = Interval(0, 1, aligned_nodes)
             self.n_aligned += 1
-            self.out_file.writelines(["%s\t%s\t%d\n" % (record.name, a.to_file_line(), aligner.n_mismatches_so_far)])
+            self.out_file.writelines(["%s\t%s\t%d\n" % (record.name, aligned_interval.to_file_line(), score)])
         else:
+            logging.warning("Did not align")
             self.n_did_not_align += 1
 
     def align_sam(self):
