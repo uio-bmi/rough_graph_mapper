@@ -7,3 +7,6 @@
 *.egg-info
 __pycache__
 *.tmp
+*.fa.*
+tests/testgraphs/
+
