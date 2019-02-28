@@ -3,7 +3,6 @@ import shutil
 import argparse
 import sys
 from .linear_to_graph_mapper import LinearToGraphMapper
-from .traverse_mapper import TraverseMapper
 from .filter_graphalignments import filter_graphalignments
 
 
@@ -16,12 +15,6 @@ def run_map_linear_to_graph(args):
     chromosomes = args.chromosomes.split(",")
     LinearToGraphMapper(args.fasta, args.reference, args.data_dir, chromosomes, n_threads=args.n_threads,
                         write_final_alignments_to_file=args.output_file, skip_mapq_adjustment=args.skip_mapq_adjustment)
-
-def run_graphtraverser(args):
-    chromosomes = args.chromosomes.split(",")
-    TraverseMapper(args.fasta, args.reference, args.data_dir, chromosomes, skip_run_linear_to_graph=args.skip_run_linear,
-                   n_threads=args.n_threads, write_final_alignments_to_file=args.output_file,
-                   skip_mapq_adjustment=args.skip_mapq_adjustment)
 
 def main():
     run_argument_parser(sys.argv[1:])
@@ -44,11 +37,9 @@ def run_argument_parser(args):
     subparsers = parser.add_subparsers(help='Subcommands')
     subparser_linear = subparsers.add_parser("map_linear_to_graph", help="Graphmapping by first mapping to a "
                                     "linear reference genome and then fitting these alignments to the graph.")
-    subparser_graph = subparsers.add_parser("traversemapper",
-                                    help="Graphmapping by traversing the graph and fitting the graph to the reads.")
     subparser_filter = subparsers.add_parser("filter", help="Filtering alignments.")
 
-    for subparser in [subparser_linear, subparser_graph]:
+    for subparser in [subparser_linear]:
         subparser.add_argument("-r", "--reference", help="Linear reference fasta", required=True)
         subparser.add_argument("-f", "--fasta", help="Input fasta file", required=True)
         subparser.add_argument("-d", "--data-dir", help="", required=True)
@@ -58,13 +49,11 @@ def run_argument_parser(args):
         subparser.add_argument("-q", "--skip-mapq-adjustment", default=False, required=False,
                 help="Set to true to skip running mininap 2 adjust mapq's. Takes less time with worse performance.")
 
-    subparser_graph.add_argument("-s", "--skip_run_linear", default=False, type=bool, required=False)
 
     subparser_filter.add_argument("-m", "--min-mapq", help="Minimum mapq to keep", required=False, type=int, default=50)
     subparser_filter.add_argument("-a", "--alignments", help="Graphalignments file to filter", required=True)
 
     subparser_linear.set_defaults(func=run_map_linear_to_graph)
-    subparser_graph.set_defaults(func=run_graphtraverser)
     subparser_filter.set_defaults(func=run_filter)
 
 

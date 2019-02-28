@@ -2,37 +2,28 @@
 
 
 # A simple proof-of-concept graph mapper
-Rough Graph Mapper is a simple proof-of-concept graph-mapper implemented in Python. 
+Rough Graph Mapper is a simple proof-of-concept naive graph-mapper implemented in Python, that align reads to a graph
+by first aligning them to a linear reference genome and then locally aligning using [GSSW](https://github.com/vgteam/gssw).
 
 ## Install
 You will need BWA and Minimap2 installed first. The rest of the dependencies are 
 handled when you run the python install script.
 
-You install by cloning and running `python setup.py`
+You install by using pip:
 
 ```bash
-git clone ...
-cd rough_graph_mapper
-python3 setup.py install
+pip3 install rough_graph_mapper
 ```
 
 ## How to run
 You will need a directory with graphs and the linear reference of which the graphs has been built from.
-### Linear to graph mapping
-This is the simplest and fastest form of mapping. 
+
 A combination of BWA MEM and Minimap is run against the linear reference genome 
 first, and then these alignments are "fitted" to the graph.
 ```bash
 rough_graph_mapper map_linear_to_graph -r linear_reference.fa -f reads.fa -d graphs_dir/ --chromosomes 1,2,3 > mapped.graphalignments
 ```
 
-### Traversemapper
-This method first runs linear to graph mapping, and then tries to map the rest of the reads 
-(those that did not get a good mapping in the first step) by traversing the graph and fitting the graph to the reads.
-This method is a lot slower and requires a lot of memory.
-```bash
-rough_graph_mapper traversemapper -r linear_reference.fa -f reads.fa -d graphs_dir/ --chromosomes 1,2,3 > mapped.graphalignments
-```
 
 ### Filter the final alignments
 This is a super simple filtering script, aimed at removing bad alignments and alignments from reads that multimap.

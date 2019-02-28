@@ -1,2 +1,1 @@
 from .linear_to_graph_mapper import LinearToGraphMapper
-from .traverse_mapper import TraverseMapper
