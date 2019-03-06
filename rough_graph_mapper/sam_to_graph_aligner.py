@@ -19,7 +19,8 @@ class SamToGraphAligner:
         self.n_skipped_low_score = 0
         self.n_aligned = 0
         self.n_did_not_align = 0
-        self.minimum_mapq_to_graphalign=minimum_mapq_to_graphalign
+        self.minimum_mapq_to_graphalign = minimum_mapq_to_graphalign
+        logging.info("Will only graphalign reads with mapq %d or higher" % self.minimum_mapq_to_graphalign)
         self.minimum_score_to_graphalign=minimum_score_to_graphalign
         self.reads_skipped_because_low_mapq_and_multimapping = set()
         self.out_file = open(self.sam_file_name + ".graphalignments", "w")
@@ -54,7 +55,7 @@ class SamToGraphAligner:
         position = self.linear_path.position_at_offset(linear_pos)
 
         if record.alternative_alignments is not None:
-            if record.mapq < 60 and len(record.alternative_alignments.split(";")) > 10:
+            if record.mapq < self.minimum_mapq_to_graphalign and len(record.alternative_alignments.split(";")) > 10:
                 self.reads_skipped_because_low_mapq_and_multimapping.add(record.name)
                 return
 
