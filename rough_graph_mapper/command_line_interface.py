@@ -1,9 +1,14 @@
 import logging
+logging.basicConfig(level=logging.INFO)
 import shutil
 import argparse
 import sys
 from .linear_to_graph_mapper import LinearToGraphMapper
 from .filter_graphalignments import filter_graphalignments
+from offsetbasedgraph import Graph, NumpyIndexedInterval, SequenceGraph
+from .mdz_aligner import mdz_align_bam_file
+from .util import split_sam_by_chromosomes
+from multiprocessing import Process
 
 
 def remove_reads_from_fasta(args):
@@ -24,6 +29,34 @@ def remove_reads_from_fasta(args):
             if not skip:
                 print(line.strip())
 
+def mdz_align_single_chromosome(graph_dir, sam_file, chromosome, output_file):
+    out_file_name = output_file + "_" + chromosome + ".edgecounts"
+    sam_file_name = sam_file  # sam_base_name + "_chr" + chromosome + ".sam"
+
+    graph = Graph.from_file(graph_dir + "/" + chromosome + ".nobg")
+    sequence_graph = SequenceGraph.from_file(graph_dir + "/" + chromosome + ".nobg.sequences")
+    reference_path = NumpyIndexedInterval.from_file(graph_dir + "/" + chromosome + "_linear_pathv2.interval")
+    linear_reference_nodes = reference_path.nodes_in_interval()
+
+    mdz_align_bam_file(sam_file_name, graph, sequence_graph, reference_path, linear_reference_nodes,
+                       out_file_name, limit_to_chromosome=chromosome)
+
+def mdz_align_wrapper(args):
+    graph_dir = args.data_dir
+    bam_file = args.bam_file
+    sam_base_name = ".".join(bam_file.split(".")[0:-1])
+
+    #split_sam_by_chromosomes(bam_file, args.chromosomes.split(","))
+
+    processes = []
+    for chromosome in args.chromosomes.split(","):
+        p = Process(target=mdz_align_single_chromosome, args=(graph_dir, bam_file, chromosome, args.output_file))
+        p.start()
+
+    for p in processes:
+        p.join()
+
+
 
 def run_filter(args):
     alignments = args.alignments
@@ -34,7 +67,7 @@ def run_map_linear_to_graph(args):
     chromosomes = args.chromosomes.split(",")
     LinearToGraphMapper(args.fasta, args.reference, args.data_dir, chromosomes, n_threads=args.n_threads,
                         write_final_alignments_to_file=args.output_file, skip_mapq_adjustment=args.skip_mapq_adjustment,
-                        minimum_mapq_to_graphalign=args.min_mapq)
+                        minimum_mapq_to_graphalign=args.min_mapq, only_run_minimap=args.only_run_minimap)
 
 def main():
     run_argument_parser(sys.argv[1:])
@@ -67,8 +100,9 @@ def run_argument_parser(args):
         subparser.add_argument("-t", "--n_threads", help="Number of threads to use", type=int, default=8, required=False)
         subparser.add_argument("-m", "--min-mapq", help="Minimum mapq to keep", required=False, type=int, default=40)
         subparser.add_argument("-o", "--output-file", help="Write final alignments to this file. If not set, will write to stdout", default=None, required=False)
+        subparser.add_argument("-M", "--only-run-minimap", help="Only run Minimap (no BWA-MEM)", default=False, required=False)
         subparser.add_argument("-q", "--skip-mapq-adjustment", default=False, required=False,
-                help="Set to true to skip running mininap 2 adjust mapq's. Takes less time with worse performance.")
+                help="Set to true to skip running mininap to adjust mapq's. Takes less time with worse performance.")
 
 
     subparser_remove_from_fasta = subparsers.add_parser("remove_reads_from_fasta", help="Outputs fasta entries with ID not in --alignments file")
@@ -82,6 +116,14 @@ def run_argument_parser(args):
     subparser_filter.set_defaults(func=run_filter)
     subparser_remove_from_fasta.set_defaults(func=remove_reads_from_fasta)
 
+    # mdz align
+    subparser_mdzalign = subparsers.add_parser("mdz_align_bam", help="Align a bam file to graph by using cigar/mdz align.")
+    subparser_mdzalign.add_argument("-b", "--bam-file", help="Input bam file", required=True)
+    subparser_mdzalign.add_argument("-d", "--data-dir", help="Directory containing graphs", required=True)
+    subparser_mdzalign.add_argument("-o", "--output-file", help="Write edge counts to this file "
+                                                                "(will be used as a base file name)", required=True)
+    subparser_mdzalign.add_argument("-c", "--chromosomes", help="Comma-separated list of chromosomes", required=True)
+    subparser_mdzalign.set_defaults(func=mdz_align_wrapper)
 
     if len(args) == 0:
         parser.print_help()

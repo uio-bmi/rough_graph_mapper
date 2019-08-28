@@ -105,11 +105,16 @@ class Alignment:
         self.pysam_object.mapping_quality = new_mapq
 
 
-def read_sam(sam_file_name, chr=None, start=None, stop=None, skip_supplementary=True, check_sq=True):
+def read_sam(sam_file_name, chr=None, start=None, stop=None, skip_supplementary=True, check_sq=True,
+             return_pysam_objects=False):
     """ Wrapper around pysam"""
     f = pysam.AlignmentFile(sam_file_name, "r", check_sq=check_sq)
     for a in f.fetch(chr, start, stop, until_eof=True):
         if skip_supplementary and a.is_supplementary:
+            continue
+
+        if return_pysam_objects:
+            yield a
             continue
 
         alternative_alignments = None
@@ -126,6 +131,7 @@ def read_sam(sam_file_name, chr=None, start=None, stop=None, skip_supplementary=
         except ValueError:
             reference_name = "0"
 
+
         alignment_object = Alignment(a.query_name, reference_name, a.reference_start, a.reference_end, a.query_sequence,
                                      a.is_reverse, a.flag, a.mapping_quality, score, alternative_alignments, a)
 
@@ -139,13 +145,20 @@ def number_of_lines_in_file(file_name):
 def select_lowest_mapq_from_two_sam_files(sam1_file_name, sam2_file_name, output_file_name):
     sam2_n_good_alignments = defaultdict(int)
     mapq_sam2 = defaultdict(int)
+    sam2_best_alignment = {}
 
+    n_changed_to_sam2 = 0
     out_sam = pysam.AlignmentFile(output_file_name, "wh", template=pysam.AlignmentFile(sam1_file_name, "r"))
 
     logging.info("Correcting mapq scores. First reading sam2")
     for alignment in tqdm(read_sam(sam2_file_name), total=number_of_lines_in_file(sam2_file_name)):
         sam2_n_good_alignments[alignment.name] += 1
         mapq_sam2[alignment.name] = max(alignment.mapq, mapq_sam2[alignment.name])  # Keep best mapq
+
+        if alignment.name not in sam2_best_alignment:
+            sam2_best_alignment[alignment.name] = alignment
+        elif alignment.score > sam2_best_alignment[alignment.name].score:
+            sam2_best_alignment[alignment.name] = alignment
 
     n_adjusted = 0
 
@@ -156,13 +169,19 @@ def select_lowest_mapq_from_two_sam_files(sam1_file_name, sam2_file_name, output
 
         mapq2 = mapq_sam2[alignment.name]
 
+        # if sam2 has higher score
+        if sam2_best_alignment[alignment.name].score > alignment.score * 2:
+            #print("sam2 has score %d > alignment score %d" % (sam2_best_alignment[alignment.name].score, alignment.score))
+            alignment = sam2_best_alignment[alignment.name]
+            n_changed_to_sam2 += 1
         # If sam2 has low mapq due to multiple good alignments, use sam2's mapq score (we trust that one)
-        if alignment.mapq > mapq2 and sam2_n_good_alignments[alignment.name] > 1:
+        elif alignment.mapq > mapq2 and sam2_n_good_alignments[alignment.name] > 1 and sam2_best_alignment[alignment.name].score / 2 > alignment.score * 0.8:
             alignment.set_mapq(mapq2)
             n_adjusted += 1
 
         out_sam.write(alignment.pysam_object)
 
+    logging.info("%d alignments were changed to sam2" % n_changed_to_sam2)
     logging.info("%d mapqs were adjusted down" % n_adjusted)
     logging.info("Correct sam file written to %s" % output_file_name)
 
@@ -190,7 +209,7 @@ def run_bwa_mem(reference_file_name, fasta_file_name, output_file_name, argument
     logging.info("Done running BWA MEM. Wrote alignments to %s" % output_file_name)
 
 def run_minimap2(reference_file_name, fasta_file_name, output_file_name, arguments="-ax sr"):
-    command = "minimap2 " + arguments + " " + reference_file_name + " " + fasta_file_name
+    command = "/home/ivar/dev/minimap2-2.17_x64-linux/minimap2 " + arguments + " " + reference_file_name + " " + fasta_file_name
     logging.info("Running Minimap 2 with command %s" % command)
     with open(output_file_name, "w") as outfile:
         process = subprocess.Popen(command.split(), stdout=outfile, stderr=subprocess.PIPE)

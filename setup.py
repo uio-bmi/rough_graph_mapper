@@ -9,7 +9,7 @@ setup(name='rough_graph_mapper',
       license='MIT',
       packages=["rough_graph_mapper"],
       zip_safe=False,
-      install_requires=['numpy', 'mappy', 'pygssw', 'python-coveralls', 'pysam',
+      install_requires=['numpy', 'mappy', 'pygssw', 'python-coveralls', 'pysam==0.15.3',
                         'pyfaidx', 'offsetbasedgraph', 'pyvg', 'graph_peak_caller', 'tqdm'],
       classifiers=[
             'Programming Language :: Python :: 3'
