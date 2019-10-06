@@ -4,6 +4,8 @@ from tqdm import tqdm
 import pysam
 from collections import defaultdict
 import numpy as np
+import pickle
+import sys
 
 
 def read_fasta(file_name):
@@ -79,7 +81,7 @@ def split_sam_by_chromosomes(sam_file, chromosomes):
 
 class Alignment:
     def __init__(self, name, chromosome, start, end, sequence, is_reverse, flag=0, mapq=0, score=0,
-                    alternative_alignments=None, pysam_object=None):
+                    alternative_alignments=None, pysam_object=None, text_line=None):
         self.sequence = sequence
         self.name = name
         self.start = start
@@ -90,11 +92,15 @@ class Alignment:
         self.mapq = mapq
         self.flag = flag
         self.alternative_alignments = alternative_alignments
+        self.text_line = text_line
         self.pysam_object = pysam_object
 
     def set_start(self, new_start):
-        self.start = new_start
-        self.pysam_object.reference_start = new_start
+        self.start = int(new_start)
+        if self.text_line != None:
+            self.text_line[3] = str(self.start)
+        else:
+            self.pysam_object.reference_start = new_start
 
     def set_end(self, new_end):
         self.end = new_end
@@ -105,12 +111,43 @@ class Alignment:
         self.pysam_object.mapping_quality = new_mapq
 
 
+def read_sam_fast(sam_file_name):
+    with open(sam_file_name) as f:
+        for line in f:
+
+            if line.startswith("@"):
+                continue
+
+            l = line.split()
+            if len(l) <= 0:
+                continue
+
+            if int(l[1]) >= 2048:
+                # supplementary (note: secondary alignments are still accepted)
+                continue
+
+            try:
+                ref = l[2]
+                position = int(l[3])
+                name = l[0]
+                mapq = int(l[4])
+                score = int(l[13].replace("AS:i:", ""))
+            except IndexError:
+                logging.warning("Could not parse line %s" % line)
+                continue
+
+            yield Alignment(name, ref, position, None, None, None, None, mapq, score, text_line=l)
+
+
 def read_sam(sam_file_name, chr=None, start=None, stop=None, skip_supplementary=True, check_sq=True,
-             return_pysam_objects=False):
+             return_pysam_objects=False, skip_secondary=False):
     """ Wrapper around pysam"""
     f = pysam.AlignmentFile(sam_file_name, "r", check_sq=check_sq)
     for a in f.fetch(chr, start, stop, until_eof=True):
         if skip_supplementary and a.is_supplementary:
+            continue
+
+        if skip_secondary and a.is_secondary:
             continue
 
         if return_pysam_objects:
@@ -142,16 +179,146 @@ def number_of_lines_in_file(file_name):
     return sum(1 for _ in open(file_name, 'rb'))
 
 
-def select_lowest_mapq_from_two_sam_files(sam1_file_name, sam2_file_name, output_file_name):
+def improve_mapping_with_two_sams(sam1_file_name, sam2_file_name):
+
+    n_changed_to_sam2 = 0
+    n_mapq_lowered = 0
+    n_untouched = 0
+
+    sam1 = open(sam1_file_name)
+    sam2 = open(sam2_file_name)
+
+    prev_line1_id = -1
+    sam2_best_alignment_score = 0
+    sam2_best_alignment = None
+    sam2_n_good_alignments = 0
+    sam2_best_mapq = 0
+    i2 = 0
+
+    lowered_ids = set()
+    last_line = None
+    for i, line1 in enumerate(sam1):
+        last_line = line1
+        if line1.startswith("@"):
+            print(line1.strip())
+            continue
+
+        if i % 100000 == 0:
+            logging.info("%d lines processed. On line %d in sam2. %d changed to sam 2. %d lowered mapq. %d untouched" %
+                         (i, i2, n_changed_to_sam2, n_mapq_lowered, n_untouched))
+
+        l = line1.split()
+        id1 = l[0]
+        if int(l[1]) >= 256:
+            # secondary or supplementary alignment
+            continue
+
+        mapq = int(l[4])
+        try:
+            alignment_score = int(l[13].replace("AS:i:", ""))
+        except IndexError:
+            # Probably not aligned, skip
+            print(line1.strip())
+            continue
+
+        assert id1 != prev_line1_id, "Sam 1 contains duplicate entries with same ID"
+        assert int(id1) > int(prev_line1_id), "prev id: %d, id now: %d. Line %s" % (int(prev_line1_id), int(id1), line1)
+        prev_line1_id = id1
+
+        #logging.info("%s at %s:%s with mapq %d and score %d" % (id1, l[2], l[3], mapq, alignment_score))
+
+        # read sam2 as long as we have this id
+        for line2 in sam2:
+            if line2.startswith("@"):
+                continue
+
+            i2 += 1
+            l2 = line2.split()
+            id2 = l2[0]
+
+            if int(l2[1]) >= 2048:
+                # supplementary alignment
+                continue
+
+            assert int(id2) >= int(id1)
+
+            try:
+                alignment_score2 = int(l2[13].replace("AS:i:", ""))
+                mapq2 = int(l2[4])
+            except IndexError:
+                # not valid alignment
+                #logging.info("   NOT VALID ALIGNMENT %s" % line2)
+                alignment_score2 = 0
+                mapq2 = 0
+
+
+            #logging.info("    %s at %s:%s with mapq %d and score %d" % (id2, l2[2], l2[3], mapq2, alignment_score2))
+
+            # NOTE: This test does not work for the last line in sam1 (but probably not a big issue)
+            if id2 != id1:
+                # Done with id1, now we need to return the wanted alignment
+                if sam2_best_alignment_score > alignment_score * 2:
+                    print(sam2_best_alignment.strip())
+                    replace_id = sam2_best_alignment.split()[0]
+
+                    assert replace_id == id1, "Replace id %s != id1 %s" % (replace_id, id1)
+                    n_changed_to_sam2 += 1
+                    #logging.info("      CHANGING TO MINIMAP. Best score is %d" % sam2_best_alignment_score)
+                    lowered_ids.add(id1)
+
+                elif mapq > sam2_best_mapq and sam2_n_good_alignments > 1 and sam2_best_alignment_score / 2 > alignment_score * 0.99:
+                    # Lower the mapq, sam2 has multiple good alignments and low mapq
+                    l[4] = str(sam2_best_mapq)
+                    print('\t'.join(l).strip())
+                    #logging.info("      LOWERING MAPQ to %s" % l[4])
+                    n_mapq_lowered += 1
+                else:
+                    # no adjustment, just print line
+                    n_untouched += 1
+                    print(line1.strip())
+
+                # Done with one line in sam1, initlize scores etc for next line in sam1
+                sam2_best_alignment_score = alignment_score2
+                sam2_best_alignment = line2
+                sam2_n_good_alignments = 1
+                sam2_best_mapq = mapq2
+
+                break  # break, and conitnue iterating sam1
+            else:
+                # New line in sam2 with same id, update scores
+                if alignment_score2 > sam2_best_alignment_score:
+                    sam2_best_alignment_score = alignment_score2
+                    sam2_best_alignment = line2
+
+                sam2_n_good_alignments +=1
+
+                if mapq2 > sam2_best_mapq:
+                    sam2_best_mapq = mapq2
+
+            #logging.info(sam2_n_good_alignments)
+
+    print(last_line)
+    logging.info("%d changed to sam 2. %d lowered mapq. %d untouched. Total: %d" %
+                 (n_changed_to_sam2, n_mapq_lowered, n_untouched, n_changed_to_sam2+n_mapq_lowered+n_untouched))
+
+    with open("changed1.pckl", "wb") as f:
+        logging.info("Writing %d changed ids to file" % len(lowered_ids))
+        pickle.dump(lowered_ids, f)
+
+
+def select_lowest_mapq_from_two_sam_files(sam1_file_name, sam2_file_name, output_file_name=None):
     sam2_n_good_alignments = defaultdict(int)
     mapq_sam2 = defaultdict(int)
     sam2_best_alignment = {}
 
+    lowered_ids = set()
     n_changed_to_sam2 = 0
-    out_sam = pysam.AlignmentFile(output_file_name, "wh", template=pysam.AlignmentFile(sam1_file_name, "r"))
+
+    if output_file_name is not None:
+        out_sam = pysam.AlignmentFile(output_file_name, "wh", template=pysam.AlignmentFile(sam1_file_name, "r"))
 
     logging.info("Correcting mapq scores. First reading sam2")
-    for alignment in tqdm(read_sam(sam2_file_name), total=number_of_lines_in_file(sam2_file_name)):
+    for alignment in tqdm(read_sam(sam2_file_name, skip_supplementary=True), total=number_of_lines_in_file(sam2_file_name)):
         sam2_n_good_alignments[alignment.name] += 1
         mapq_sam2[alignment.name] = max(alignment.mapq, mapq_sam2[alignment.name])  # Keep best mapq
 
@@ -161,9 +328,10 @@ def select_lowest_mapq_from_two_sam_files(sam1_file_name, sam2_file_name, output
             sam2_best_alignment[alignment.name] = alignment
 
     n_adjusted = 0
+    n_untouched = 0
 
     logging.info("Reading sam file 1, checking if mapqs should be lowered")
-    for alignment in tqdm(read_sam(sam1_file_name), total=number_of_lines_in_file(sam1_file_name)):
+    for alignment in tqdm(read_sam(sam1_file_name, skip_supplementary=True, skip_secondary=True), total=number_of_lines_in_file(sam1_file_name)):
         if alignment.name not in mapq_sam2:
             logging.warning("Sam file 2 does not have %s which is in sam file 2." % alignment.name)
 
@@ -174,15 +342,26 @@ def select_lowest_mapq_from_two_sam_files(sam1_file_name, sam2_file_name, output
             #print("sam2 has score %d > alignment score %d" % (sam2_best_alignment[alignment.name].score, alignment.score))
             alignment = sam2_best_alignment[alignment.name]
             n_changed_to_sam2 += 1
+            lowered_ids.add(alignment.name)
         # If sam2 has low mapq due to multiple good alignments, use sam2's mapq score (we trust that one)
         elif alignment.mapq > mapq2 and sam2_n_good_alignments[alignment.name] > 1 and sam2_best_alignment[alignment.name].score / 2 > alignment.score * 0.8:
             alignment.set_mapq(mapq2)
             n_adjusted += 1
+        else:
+            n_untouched += 1
 
-        out_sam.write(alignment.pysam_object)
+        if output_file_name is not None:
+            out_sam.write(alignment.pysam_object)
+        else:
+            print(alignment.pysam_object.to_string())
+
+    with open("changed2.pckl", "wb") as f:
+        logging.info("Writing %d changed ids to file" % len(lowered_ids))
+        pickle.dump(lowered_ids, f)
 
     logging.info("%d alignments were changed to sam2" % n_changed_to_sam2)
     logging.info("%d mapqs were adjusted down" % n_adjusted)
+    logging.info("%d mapqs were untouched" % n_untouched)
     logging.info("Correct sam file written to %s" % output_file_name)
 
 

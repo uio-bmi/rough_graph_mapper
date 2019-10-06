@@ -7,8 +7,14 @@ from .linear_to_graph_mapper import LinearToGraphMapper
 from .filter_graphalignments import filter_graphalignments
 from offsetbasedgraph import Graph, NumpyIndexedInterval, SequenceGraph
 from .mdz_aligner import mdz_align_bam_file
-from .util import split_sam_by_chromosomes
+from .util import split_sam_by_chromosomes, improve_mapping_with_two_sams, select_lowest_mapq_from_two_sam_files
 from multiprocessing import Process
+
+
+def merge_sams(args):
+    improve_mapping_with_two_sams(args.sam1, args.sam2)
+    #logging.info("Merging ...")
+    #select_lowest_mapq_from_two_sam_files(args.sam1, args.sam2)
 
 
 def remove_reads_from_fasta(args):
@@ -124,6 +130,12 @@ def run_argument_parser(args):
                                                                 "(will be used as a base file name)", required=True)
     subparser_mdzalign.add_argument("-c", "--chromosomes", help="Comma-separated list of chromosomes", required=True)
     subparser_mdzalign.set_defaults(func=mdz_align_wrapper)
+
+    # merge_sams
+    subparser_merge_sams = subparsers.add_parser("merge_sams", help="Improve mapping performance by merging two SAMs.")
+    subparser_merge_sams.add_argument("sam1", help="Sam file 1")
+    subparser_merge_sams.add_argument("sam2", help="Sam file 2")
+    subparser_merge_sams.set_defaults(func=merge_sams)
 
     if len(args) == 0:
         parser.print_help()
