@@ -49,8 +49,8 @@ def mdz_align_bam_file(bam_file_name, graph, sequence_graph, reference_path, lin
         #             (i, n_reads_cover_variants, n_substitutions, n_insertions, n_deletions))
         i += 1
 
-    logging.info("Found %d variant edges" % len(edge_counts.keys()))
-    logging.info("Found %d substitutions, %d insertions and %d deletiosn" % (n_substitutions, n_insertions, n_deletions))
+    logging.info("Chr %s: Found %d variant edges" % (limit_to_chromosome, len(edge_counts.keys())))
+    logging.info("Chr %s: Found %d substitutions, %d insertions and %d deletiosn" % (limit_to_chromosome, n_substitutions, n_insertions, n_deletions))
     logging.info("Writing edges to file")
     with open(out_file_name, "wb") as f:
         pickle.dump(edge_counts, f)
