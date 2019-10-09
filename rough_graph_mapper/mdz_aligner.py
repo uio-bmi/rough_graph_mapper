@@ -135,7 +135,15 @@ class MdzAligner:
 
         prev_node = self.reference_path.get_node_at_offset(ref_offset - 1)
 
-        # Using simple heuristic, take next edge that goes back to linear reference
+        # Find next reference node with offset corresponding to the number of deleted base pairs
+        next_ref_pos = ref_offset + len(ref_base)
+        assert self.reference_path.get_node_offset_at_offset(next_ref_pos) == 0, "Offset %d is not at beginning of node" % next_ref_pos
+
+        next_ref_node = self.reference_path.get_node_at_offset(ref_offset + len(ref_base))
+        self._variant_edges_detected.add((prev_node, next_ref_node))
+        return True
+
+
         for potential_next in self.graph.adj_list[prev_node]:
             if potential_next in self.linear_reference_nodes:
                 self._variant_edges_detected.add((prev_node, potential_next))
