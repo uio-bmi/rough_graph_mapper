@@ -7,12 +7,15 @@ from .linear_to_graph_mapper import LinearToGraphMapper
 from .filter_graphalignments import filter_graphalignments
 from offsetbasedgraph import Graph, NumpyIndexedInterval, SequenceGraph
 from .mdz_aligner import mdz_align_bam_file
-from .util import split_sam_by_chromosomes, improve_mapping_with_two_sams, select_lowest_mapq_from_two_sam_files
+from .util import split_sam_by_chromosomes, improve_mapping_with_two_sams, select_lowest_mapq_from_two_sam_files, merge_single_line_sams
 from multiprocessing import Process
 
 
 def merge_sams(args):
-    improve_mapping_with_two_sams(args.sam1, args.sam2)
+    if args.single_line:
+        merge_single_line_sams(args.sam1, args.sam2)
+    else:
+        improve_mapping_with_two_sams(args.sam1, args.sam2)
     #logging.info("Merging ...")
     #select_lowest_mapq_from_two_sam_files(args.sam1, args.sam2)
 
@@ -135,6 +138,8 @@ def run_argument_parser(args):
     subparser_merge_sams = subparsers.add_parser("merge_sams", help="Improve mapping performance by merging two SAMs.")
     subparser_merge_sams.add_argument("sam1", help="Sam file 1")
     subparser_merge_sams.add_argument("sam2", help="Sam file 2")
+    subparser_merge_sams.add_argument("-s", "--single-line", required=False, type=bool, default=False,
+                                      help="Set to True if both same files have only one line per read. Is faster")
     subparser_merge_sams.set_defaults(func=merge_sams)
 
     if len(args) == 0:
