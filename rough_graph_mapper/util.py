@@ -179,6 +179,55 @@ def number_of_lines_in_file(file_name):
     return sum(1 for _ in open(file_name, 'rb'))
 
 
+def merge_single_line_sams(sam1_file_name, sam2_file_name):
+    n_changed_to_sam2 = 0
+    sam1 = open(sam1_file_name)
+    sam2 = open(sam2_file_name)
+
+    for i, line1 in enumerate(sam1):
+        if line1.startswith("@"):
+            print(line1.strip())
+            continue
+
+        if i % 100000 == 0:
+            logging.info("%d lines processed." % i)
+
+        l = line1.split()
+        id1 = l[0]
+
+        try:
+            alignment_score = int(l[13].replace("AS:i:", ""))
+        except IndexError:
+            # Probably not aligned, skip
+            print(line1.strip())
+            continue
+
+        for line2 in sam2:
+            l2 = line2.split()
+            if line2.startswith("@"):
+                continue
+
+            id2 = l2[0]
+
+            assert id2 == id1
+
+            try:
+                alignment_score2 = int(l2[13].replace("AS:i:", ""))
+            except IndexError:
+                alignment_score2 = 0
+                mapq2 = 0
+
+            if alignment_score2 > alignment_score:
+                print(line2.strip())
+                n_changed_to_sam2 += 1
+            else:
+                print(line1.strip())
+
+            break  # Only read 1 line in sam2
+
+    logging.info("%d lines changed to sam2")
+
+
 def improve_mapping_with_two_sams(sam1_file_name, sam2_file_name):
 
     n_changed_to_sam2 = 0
