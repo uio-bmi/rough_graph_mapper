@@ -49,8 +49,8 @@ def mdz_align_bam_file(bam_file_name, graph, sequence_graph, reference_path, lin
         #             (i, n_reads_cover_variants, n_substitutions, n_insertions, n_deletions))
         i += 1
 
-    logging.info("Found %d variant edges" % len(edge_counts.keys()))
-    logging.info("Found %d substitutions, %d insertions and %d deletiosn" % (n_substitutions, n_insertions, n_deletions))
+    logging.info("Chr %s: Found %d variant edges" % (limit_to_chromosome, len(edge_counts.keys())))
+    logging.info("Chr %s: Found %d substitutions, %d insertions and %d deletiosn" % (limit_to_chromosome, n_substitutions, n_insertions, n_deletions))
     logging.info("Writing edges to file")
     with open(out_file_name, "wb") as f:
         pickle.dump(edge_counts, f)
@@ -88,8 +88,27 @@ class MdzAligner:
             self._process_substitution(substitution[0], substitution[1], substitution[2])
 
 
-        for deletion in deletions:
-            did_find = self._process_deletion(deletion[1], deletion[2])
+        #logging.info("ALL DELETIONS: %s" % deletions)
+        if len(deletions) == 1:
+            deletion = deletions[0]
+            did_find = self._process_deletion(deletion[1], 1)
+        elif len(deletions) > 1:
+            # We need to group deletions that belong together
+            prev_del_pos = deletions[0][1]
+            del_length = 1
+            for deletion in deletions[1:]:
+                pos = deletion[1]
+                if pos == prev_del_pos + 1:
+                    # This is part of same deletion, just build on it
+                    del_length += 1
+                    prev_del_pos = pos
+                    continue 
+                else:
+                    # Prev deletion is done, process it
+                    did_find = self._process_deletion(prev_del_pos + 1 - del_length, del_length)
+                    prev_del_pos = pos
+                    del_length = 1
+            did_find = self._process_deletion(prev_del_pos + 1 - del_length, del_length)
 
         for insertion in insertions:
             #print("Insertion: " + str(insertion))
@@ -121,14 +140,15 @@ class MdzAligner:
                 self.n_subsitutions += 1
                 break
 
-    def _process_deletion(self, ref_offset, ref_base):
+    def _process_deletion(self, ref_offset, deletion_length):
+        #logging.info("Processing deletion at ref pos %d with size %d" % (ref_offset, deletion_length))
         node = self.reference_path.get_node_at_offset(ref_offset)
         if node in self._deletion_nodes_processed:
             return False
         self._deletion_nodes_processed.add(node)
         node_offset = self.reference_path.get_node_offset_at_offset(ref_offset)
 
-        #print("Processing deltion %s, %s, node offset %d" % (ref_offset, ref_base, node_offset))
+        #print("Processing deltion %s, %d, node offset %d" % (ref_offset, deletion_length, node_offset))
         if node_offset != 0:
             # Ignore, deletion not in graph
             return
@@ -136,11 +156,21 @@ class MdzAligner:
         prev_node = self.reference_path.get_node_at_offset(ref_offset - 1)
 
         # Find next reference node with offset corresponding to the number of deleted base pairs
-        next_ref_pos = ref_offset + len(ref_base)
-        assert self.reference_path.get_node_offset_at_offset(next_ref_pos) == 0, "Offset %d is not at beginning of node" % next_ref_pos
+        next_ref_pos = ref_offset + deletion_length
+        next_ref_node = self.reference_path.get_node_at_offset(ref_offset + deletion_length) 
+        if self.reference_path.get_node_offset_at_offset(next_ref_pos) != 0:
+            # Is at start of node, but no new node at next_ref_pos + deletion_length.
+            # this means this deletion is not in the graph
+            return False
+            logging.error("Offset %d is not at beginning of node" % next_ref_pos)
+            logging.error("Node at %d: %d" % (next_ref_pos, next_ref_node))
+            logging.error("Ref length in deletion: %s" % deletion_length)
+            logging.info("Ref pos beginning of deletion: %d" % ref_offset)
+            raise Exception("")
+            return False
 
-        next_ref_node = self.reference_path.get_node_at_offset(ref_offset + len(ref_base))
         self._variant_edges_detected.add((prev_node, next_ref_node))
+        self.n_deletions += 1
         return True
 
 
