@@ -7,7 +7,7 @@ from .linear_to_graph_mapper import LinearToGraphMapper
 from .filter_graphalignments import filter_graphalignments
 from offsetbasedgraph import Graph, NumpyIndexedInterval, SequenceGraph
 from .mdz_aligner import mdz_align_bam_file
-from .util import split_sam_by_chromosomes, improve_mapping_with_two_sams, select_lowest_mapq_from_two_sam_files, merge_single_line_sams
+from .util import split_sam_by_chromosomes, improve_mapping_with_two_sams, select_lowest_mapq_from_two_sam_files, merge_single_line_sams, merge_sams2
 from multiprocessing import Process
 
 
@@ -15,7 +15,8 @@ def merge_sams(args):
     if args.single_line:
         merge_single_line_sams(args.sam1, args.sam2)
     else:
-        improve_mapping_with_two_sams(args.sam1, args.sam2)
+        merge_sams2(args.sam1, args.sam2)
+        #improve_mapping_with_two_sams(args.sam1, args.sam2)
     #logging.info("Merging ...")
     #select_lowest_mapq_from_two_sam_files(args.sam1, args.sam2)
 
