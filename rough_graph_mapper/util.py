@@ -258,6 +258,7 @@ def improve_mapping_with_two_sams(sam1_file_name, sam2_file_name):
 
         l = line1.split()
         id1 = l[0]
+
         if int(l[1]) >= 256:
             # secondary or supplementary alignment
             continue
@@ -289,7 +290,11 @@ def improve_mapping_with_two_sams(sam1_file_name, sam2_file_name):
                 # supplementary alignment
                 continue
 
-            assert int(id2) >= int(id1)
+            if int(id2) < int(id1):
+                logging.error("File 2 has id %s > file 1 id %s." % (id2, id1))
+                logging.error("Line 1: %s" % line1)
+                logging.error("Line 2: %s" % line2)
+                continue
 
             try:
                 alignment_score2 = int(l2[13].replace("AS:i:", ""))
