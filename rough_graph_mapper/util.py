@@ -215,7 +215,6 @@ def merge_single_line_sams(sam1_file_name, sam2_file_name):
                 alignment_score2 = int(l2[13].replace("AS:i:", ""))
             except IndexError:
                 alignment_score2 = 0
-                mapq2 = 0
 
             if alignment_score2 > alignment_score:
                 print(line2.strip())
@@ -239,11 +238,15 @@ def merge_sams2(sam1_file_name, sam2_file_name):
             print(line1.strip())
             continue
 
+        
         if i % 100000 == 0:
             logging.info("%d lines processed. %d changed to sam 2, %d mapqs lowered" % (i, n_changed_to_sam2, n_mapq_lowered))
 
         l = line1.split()
         id1 = l[0]
+        if int(l[1]) >= 256:
+            continue  # Supplementary
+
 
         try:
             alignment_score = int(l[13].replace("AS:i:", ""))
@@ -264,11 +267,18 @@ def merge_sams2(sam1_file_name, sam2_file_name):
 
             id2 = l2[0]
 
+            if id2 != id1:
+                logging.error("Id1 %s != id2 %s. Is file not sorted, or are some alignments missing? Skipping for now." % (id1, id2))
+                if int(id2) < int(id1):
+                    continue
+                else:
+                    break
+
             assert id2 == id1
 
             try:
                 alignment_score2 = int(l2[13].replace("AS:i:", "")) // 2  # Divide by two, assuming this is minimap
-                mapq = int(l2[4])
+                mapq2 = int(l2[4])
             except IndexError:
                 alignment_score2 = 0
                 mapq2 = 0
@@ -276,9 +286,9 @@ def merge_sams2(sam1_file_name, sam2_file_name):
             if alignment_score2 > alignment_score:
                 print(line2.strip())
                 n_changed_to_sam2 += 1
-            elif alignment_score2 == alignment_score and mapq2 < mapq:
+            elif alignment_score2 >= alignment_score * 0.99 and mapq2 < mapq:
                 # Same score, but lower mapq -- we want the lower mapq
-                l[4] = str(mapq)
+                l[4] = str(mapq2)
                 n_mapq_lowered += 1
                 print('\t'.join(l).strip())
             else:
