@@ -229,9 +229,12 @@ def merge_single_line_sams(sam1_file_name, sam2_file_name):
 
 def merge_sams2(sam1_file_name, sam2_file_name):
     n_changed_to_sam2 = 0
+    n_minimap_better_score = 0
     n_mapq_lowered = 0
     sam1 = open(sam1_file_name)
     sam2 = open(sam2_file_name)
+
+    lowered = []
 
     for i, line1 in enumerate(sam1):
         if line1.startswith("@"):
@@ -278,23 +281,30 @@ def merge_sams2(sam1_file_name, sam2_file_name):
 
             try:
                 alignment_score2 = int(l2[13].replace("AS:i:", "")) // 2  # Divide by two, assuming this is minimap
+                #alignment_score2 = int(l2[13].replace("AS:i:", ""))
                 mapq2 = int(l2[4])
             except IndexError:
                 alignment_score2 = 0
                 mapq2 = 0
 
             if alignment_score2 > alignment_score:
-                print(line2.strip())
+                l2[4] = str(0)  # Lower mapq, we have multiple good hits
+                print('\t'.join(l2).strip())
                 n_changed_to_sam2 += 1
-            elif alignment_score2 >= alignment_score * 0.99 and mapq2 < mapq:
+            elif alignment_score2 >= alignment_score * 1.0 and mapq2 < mapq and alignment_score2 > 140:
                 # Same score, but lower mapq -- we want the lower mapq
                 l[4] = str(mapq2)
                 n_mapq_lowered += 1
+                lowered.append(id1)
                 print('\t'.join(l).strip())
             else:
                 print(line1.strip())
 
             break  # Only read 1 line in sam2
+
+    with open("lowered.txt", "w") as f:
+        for l in lowered:
+            f.writelines([l + "\n"])
 
     logging.info("%d lines changed to sam2")
     logging.info("%d mapqs lowered")
@@ -383,7 +393,7 @@ def improve_mapping_with_two_sams(sam1_file_name, sam2_file_name):
             # NOTE: This test does not work for the last line in sam1 (but probably not a big issue)
             if id2 != id1:
                 # Done with id1, now we need to return the wanted alignment
-                if sam2_best_alignment_score > alignment_score * 2:
+                if sam2_best_alignment_score > alignment_score:
                     print(sam2_best_alignment.strip())
                     replace_id = sam2_best_alignment.split()[0]
 
@@ -392,7 +402,7 @@ def improve_mapping_with_two_sams(sam1_file_name, sam2_file_name):
                     #logging.info("      CHANGING TO MINIMAP. Best score is %d" % sam2_best_alignment_score)
                     lowered_ids.add(id1)
 
-                elif mapq > sam2_best_mapq and sam2_n_good_alignments > 1 and sam2_best_alignment_score / 2 > alignment_score * 0.99:
+                elif mapq > sam2_best_mapq and sam2_n_good_alignments > 1 and sam2_best_alignment_score > alignment_score * 0.99:
                     # Lower the mapq, sam2 has multiple good alignments and low mapq
                     l[4] = str(sam2_best_mapq)
                     print('\t'.join(l).strip())
