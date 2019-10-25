@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+if [ $# -ne 4  ];
+then
+    echo "Usage: map_linear N_THREADS BWA_INDEX MINIMAP_FASTA INPUT_FASTA_FILE"
+    exit
+fi
+
+threads=$1
+bwa_index=$2
+minimap_fasta=$3
+reads=$4
+
+bwa-mem2 mem -t $threads -D 0.05 $bwa_index $reads | awk '$2 < 256' | cut -f 1-15 > bwa.tmp.sam
+minimap2 --MD -t $threads -k19 -w11 --sr --frag=yes -A1 -B4 -O6,6 -E1,1 -r50 -p.5 -f10000,50000 -n2 -m20 -s40 -g200 -2K50m --heap-sort=yes -N 5 --secondary=no -a $minimap_fasta $reads | awk '$2 < 256' > minimap.tmp.sam
+
+merge_sams bwa.tmp.sam minimap.tmp.sam
+
+rm bwa.tmp.sam minimap.tmp.sam

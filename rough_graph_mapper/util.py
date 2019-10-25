@@ -227,7 +227,7 @@ def merge_single_line_sams(sam1_file_name, sam2_file_name):
     logging.info("%d lines changed to sam2")
 
 
-def merge_sams2(sam1_file_name, sam2_file_name):
+def merge_sams2(sam1_file_name, sam2_file_name, scores_are_double=False):
     n_changed_to_sam2 = 0
     n_minimap_better_score = 0
     n_mapq_lowered = 0
@@ -256,7 +256,7 @@ def merge_sams2(sam1_file_name, sam2_file_name):
             mapq = int(l[4])
         except IndexError:
             # Probably not aligned, skip
-            print(line1.strip())
+            print(line1.srip())
             continue
 
         for line2 in sam2:
@@ -280,7 +280,10 @@ def merge_sams2(sam1_file_name, sam2_file_name):
             assert id2 == id1
 
             try:
-                alignment_score2 = int(l2[13].replace("AS:i:", "")) // 2  # Divide by two, assuming this is minimap
+                alignment_score2 = int(l2[13].replace("AS:i:", ""))
+                if scores_are_double:
+                    alignment_score2 //= 2  # Divide by two, assuming this is minimap
+
                 #alignment_score2 = int(l2[13].replace("AS:i:", ""))
                 mapq2 = int(l2[4])
             except IndexError:

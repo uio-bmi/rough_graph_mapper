@@ -15,6 +15,13 @@ You install by using pip:
 pip3 install rough_graph_mapper
 ```
 
+Also, add the scripts dir to your path by adding the following line to your `~/.profile` file:
+```
+export PATH="$PATH:/path/to/rough_graph_mapper/scripts/"
+```
+
+
+
 ## How to run
 You will need a directory with graphs and the linear reference of which the graphs has been built from.
 
