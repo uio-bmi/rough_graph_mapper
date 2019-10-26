@@ -28,7 +28,7 @@ def mdz_align_bam_file(bam_file_name, graph, sequence_graph, reference_path, lin
     n_insertions = 0
     n_substitutions = 0
     i = 0
-    for line in tqdm(read_sam(bam_file_name, return_pysam_objects=True), position=position,
+    for line in tqdm(read_sam(bam_file_name, return_pysam_objects=True, check_sq=True), position=position,
                      desc="Chromosome " + str(limit_to_chromosome)):
         if limit_to_chromosome is not None and line.reference_name != limit_to_chromosome:
             continue
