@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-echo "Mapping linear"
 
 if [ $# -ne 4  ];
 then
