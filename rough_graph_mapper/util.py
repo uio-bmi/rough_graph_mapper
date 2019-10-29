@@ -290,7 +290,7 @@ def merge_sams2(sam1_file_name, sam2_file_name, scores_are_double=False, only_sc
 
                 #alignment_score2 = int(l2[13].replace("AS:i:", ""))
                 mapq2 = int(l2[4])
-                position2 = int(l[3])
+                position2 = int(l2[3])
             except IndexError:
                 alignment_score2 = 0
                 mapq2 = 0
