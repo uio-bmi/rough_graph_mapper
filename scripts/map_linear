@@ -12,9 +12,10 @@ bwa_index=$2
 minimap_fasta=$3
 reads=$4
 
-minimap2 --MD -t $threads -k19 -w11 --sr --frag=yes -A1 -B4 -O6,6 -E1,1 -r50 -p.5 -f10000,50000 -n2 -m20 -s40 -g200 -2K50m --heap-sort=yes -N 20 --secondary=no -a $minimap_fasta $reads | awk '$2 < 256' | sed 's/\/1//g' | sed 's/\/2//g' > minimap.tmp.sam
-bwa-mem2 mem -t $threads -D 0.05 $bwa_index $reads | grep -v "^@" | awk '$2 < 256' | cut -f 1-15  > bwa.tmp.sam
+#minimap2 --MD -t $threads -k19 -w11 --sr --frag=yes -A1 -B4 -O6,6 -E1,1 -r50 -p.5 -f10000,50000 -n2 -m20 -s40 -g200 -2K50m --heap-sort=yes -N 20 --secondary=no -a $minimap_fasta $reads | awk '$2 < 256' | sed 's/\/1//g' | sed 's/\/2//g' > minimap.tmp.sam
+#bwa-mem2 mem -t $threads -D 0.05 $bwa_index $reads | grep -v "^@" | awk '$2 < 256' | cut -f 1-15  > bwa.tmp.sam
 
-merge_sams bwa.tmp.sam minimap.tmp.sam
+rough_graph_mapper merge_sams bwa.tmp.sam minimap.tmp.sam
+#merge_sams bwa.tmp.sam minimap.tmp.sam
 
 #rm bwa.tmp.sam minimap.tmp.sam
