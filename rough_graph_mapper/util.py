@@ -260,8 +260,13 @@ def merge_sams2(sam1_file_name, sam2_file_name, scores_are_double=False, only_sc
             position1 = int(l[3])
         except IndexError:
             # Probably not aligned, skip
-            print(line1.strip())
-            continue
+            alignment_score = 0
+            mapq = 0
+            position1 = 0
+            #print(line1.strip())
+            #continue
+
+        #logging.info("Sam 1: %s" % (id1))
 
         for line2 in sam2:
             l2 = line2.split()
@@ -273,6 +278,7 @@ def merge_sams2(sam1_file_name, sam2_file_name, scores_are_double=False, only_sc
                 continue
 
             id2 = l2[0]
+            #logging.info("   Sam 1: %s" % (id2))
 
             if id2 != id1:
                 logging.error("Id1 %s != id2 %s. Is file not sorted, or are some alignments missing? Skipping for now." % (id1, id2))
