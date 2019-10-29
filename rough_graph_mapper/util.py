@@ -227,7 +227,7 @@ def merge_single_line_sams(sam1_file_name, sam2_file_name):
     logging.info("%d lines changed to sam2")
 
 
-def merge_sams2(sam1_file_name, sam2_file_name, scores_are_double=False):
+def merge_sams2(sam1_file_name, sam2_file_name, scores_are_double=False, only_score_lowering=False):
     n_changed_to_sam2 = 0
     n_minimap_better_score = 0
     n_mapq_lowered = 0
@@ -235,6 +235,9 @@ def merge_sams2(sam1_file_name, sam2_file_name, scores_are_double=False):
     sam2 = open(sam2_file_name)
 
     lowered = []
+
+    if only_score_lowering:
+        logging.info("Will only change when scores are higher (and then choose the minimum mapq)")
 
     for i, line1 in enumerate(sam1):
         if line1.startswith("@"):
@@ -254,9 +257,10 @@ def merge_sams2(sam1_file_name, sam2_file_name, scores_are_double=False):
         try:
             alignment_score = int(l[13].replace("AS:i:", ""))
             mapq = int(l[4])
+            position1 = int(l[3])
         except IndexError:
             # Probably not aligned, skip
-            print(line1.srip())
+            print(line1.strip())
             continue
 
         for line2 in sam2:
@@ -286,12 +290,18 @@ def merge_sams2(sam1_file_name, sam2_file_name, scores_are_double=False):
 
                 #alignment_score2 = int(l2[13].replace("AS:i:", ""))
                 mapq2 = int(l2[4])
+                position2 = int(l[3])
             except IndexError:
                 alignment_score2 = 0
                 mapq2 = 0
 
-            if alignment_score2 > alignment_score:
-                l2[4] = str(0)  # Lower mapq, we have multiple good hits
+            if alignment_score2 >= alignment_score and abs(position1 - position2) > 10:
+                if not only_score_lowering:
+                    l2[4] = str(0)  # Lower mapq, we have multiple good hits
+                else:
+                    # New mapq should be the minimum mapq
+                    l2[4] = str(min(mapq, mapq2))
+
                 print('\t'.join(l2).strip())
                 n_changed_to_sam2 += 1
             elif alignment_score2 >= alignment_score * 1.0 and mapq2 < mapq and alignment_score2 > 140:

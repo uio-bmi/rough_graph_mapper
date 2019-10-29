@@ -15,7 +15,7 @@ def merge_sams(args):
     if args.single_line:
         merge_single_line_sams(args.sam1, args.sam2)
     else:
-        merge_sams2(args.sam1, args.sam2, scores_are_double=args.scores_are_double)
+        merge_sams2(args.sam1, args.sam2, scores_are_double=args.scores_are_double, only_score_lowering=args.only_score_lowering)
         #improve_mapping_with_two_sams(args.sam1, args.sam2)
     #logging.info("Merging ...")
     #select_lowest_mapq_from_two_sam_files(args.sam1, args.sam2)
@@ -140,6 +140,7 @@ def run_argument_parser(args):
     subparser_merge_sams.add_argument("sam1", help="Sam file 1")
     subparser_merge_sams.add_argument("sam2", help="Sam file 2")
     subparser_merge_sams.add_argument("-t", "--scores-are-double", required=False, type=bool, default=False, help="Set to True if sam2 scores are double (default with minimap)")
+    subparser_merge_sams.add_argument("-r", "--only-score-lowering", required=False, type=bool, default=False)
     subparser_merge_sams.add_argument("-s", "--single-line", required=False, type=bool, default=False,
                                       help="Set to True if both same files have only one line per read. Is faster")
     subparser_merge_sams.set_defaults(func=merge_sams)
