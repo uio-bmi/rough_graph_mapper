@@ -7,7 +7,7 @@ from .linear_to_graph_mapper import LinearToGraphMapper
 from .filter_graphalignments import filter_graphalignments
 from offsetbasedgraph import Graph, NumpyIndexedInterval, SequenceGraph
 from .mdz_aligner import mdz_align_bam_file
-from .util import split_sam_by_chromosomes, improve_mapping_with_two_sams, select_lowest_mapq_from_two_sam_files, merge_single_line_sams, merge_sams2
+from .util import split_sam_by_chromosomes, select_lowest_mapq_from_two_sam_files, merge_single_line_sams, merge_sams2
 from multiprocessing import Process
 
 

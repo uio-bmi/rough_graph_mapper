@@ -30,8 +30,7 @@ class LinearToGraphMapper:
             elif not skip_mapq_adjustment:
                 run_hybrid_between_bwa_and_minimap(linear_reference_file_name, fasta_file_name, self.base_name + ".sam",
                                                bwa_arguments="-t %d -h 10000000 -D 0.05" % n_threads,
-                                               minimap_arguments="-t %d -x sr -N 7 -a --MD" % n_threads)
-                                               #minimap_arguments="-t %d -k19 -w11 --sr --frag=yes -A2 -B8 -O12,32 -E2,1 -r50 -p.5 -f90000,180000 -n2 -m20 -s40 -g200 -2K50m --heap-sort=yes -N 7 -a" % n_threads)
+                                               minimap_arguments="-t %d --MD -k19 -w11 --sr --frag=yes -A1 -B4 -O6,6 -E1,1 -r50 -p.5 -f10000,50000 -n2 -m20 -s40 -g200 -2K50m --heap-sort=yes -N 20 --secondary=no -a " % n_threads)
             else:
                 # Only run bwa mem
                 logging.warning("Skipping mapq adjustment. Will only run BWA, not minimap2")
