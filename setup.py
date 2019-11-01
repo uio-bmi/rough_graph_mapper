@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='rough_graph_mapper',
-      version='0.0.4',
+      version='1.0.0',
       description='Rough Graph Mapper',
       url='http://github.com/uio-bmi/rough_graph_mapper',
       author='Ivar Grytten and Knut Rand',

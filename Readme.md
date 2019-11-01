@@ -24,16 +24,17 @@ export PATH="$PATH:/path/to/rough_graph_mapper/scripts/"
 
 ## How to run
 You will need a directory with graphs and the linear reference of which the graphs has been built from.
+The linear reference will have to be indexed with BWA-MEM version 2. If you want to use BWA-MEM version 1, just modify
+scripts/map_linear file.
 
 A combination of BWA MEM and Minimap is run against the linear reference genome 
 first, and then these alignments are "fitted" to the graph.
 ```bash
-rough_graph_mapper map_linear_to_graph -r linear_reference.fa -f reads.fa -d graphs_dir/ --chromosomes 1,2,3 > mapped.graphalignments
+map_linear number_of_threads bwa_index_base.fa reference_genome.fa reads.fa > mapped.sam
+
+# We now have a sam file that we can fit to the graph
+# $chromosomes should be a comma-separated list of chromosomes, and obg_graph_dir the directory containing the graphs
+rough_graph_mapper mdz_align_bam -b mapped.sam -d $obg_graph_dir -o mdzaligned -c $chromosomes
+
 ```
 
-
-### Filter the final alignments
-This is a super simple filtering script, aimed at removing bad alignments and alignments from reads that multimap.
-```bash
-rough_graph_mapper filter -r mapped.graphalignments --min-mapq 50
-```
